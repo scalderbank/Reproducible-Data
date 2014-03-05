@@ -1,0 +1,171 @@
+Problem Set 2: Steven Calderbank
+=======================================================
+
+**The Data**
+
+```{r}
+DR <- read.csv("~/Biostats/Biostats2/Methods2/Copy of DominicanHTN.csv")
+attach(DR)
+```
+
+This dataset is courtesy of Dr Waldon Garris University of Virginia School of Medicine. Dr Garriss collected the data in a pilot study during his work in the Dominican Republic in 1997. The subjects are persons who came to medical clinics in several villages, for a variety of complaints. Data on gender, age, systolic blood pressure, diastolic blood pressure, and village name were collected.
+
+```{r}
+summary(DR)
+```
+
+Each observation represents an individual who reported some sort of complaint at a medical clinic in a variety of villages in the Dominican Republic.  The data contains 5 variables and 381 observations. There does not appear to be any missing data.
+
+Our continous data (age, systolic blood pressure, and dystolic blood pressure) all appear to have outliers.  Here we see a boxplot of their distributions:
+
+```{r}
+boxplot(Age)
+```
+```{r}
+boxplot(SBP)
+```
+```{r}
+boxplot(DBP)
+```
+
+Age and SBP appear to be slightly skewed to the right with at least two outliers at the righter ends of the data.  DBP has more of a normal distribution but possesses roughly 7 outliers on either side of the data.  These values will remain in our dataset for the time being. 
+
+Age, SBP, and DBP appear to be positively correlated and would all be strong variables to use in a simple linear regression.  
+
+For example, SBP and DBP show a strong correlation
+```{r}
+cor(SBP,DBP)
+plot(SBP,DBP)
+```
+
+There is at least one extreme outlier in the top right corner of our plot that could skew the data.  The observation is a male who was reported as having a systolic blood pressure of 236 and a diastolic blood pressure of 152 which were both significantly higher than the 380 other observations. However, it does follow the overall trend of the data so we cannot conclude that there was a problem with data collection or entry.  
+
+
+**Simple Linear Regression**
+
+A simple linear regression reveals a strong relationship between SBP & DBP as well as a lesser association between Age & SBP and Age & DBP.
+
+```{r}
+SD <- lm(SBP ~ DBP)
+summary(SD)
+```
+61.63% of the variability in SBP is explained by DBP.
+```{r}
+SA <- lm(SBP ~ Age)
+summary(SA)
+```
+9.145% of the variability in SBP is explained by Age.
+```{r}
+DA <- lm(DBP ~ Age)
+summary(DA)
+```
+3.856% of the variability in DBP is explained by Age.
+
+A simple linear regression function can be used to find our betas for a regression equation using DBP to predict SBP. 
+
+```{r}
+slr <- function(x,y,d){
+         model <- lm(y~x,data=d)
+         b1 <- (sum((x-mean(x))*(y-mean(y)))/sum((x-mean(x))^2))
+         b0 <- (mean(y) - b1*mean(x))
+         bs <- c(b0,b1)
+          output <- list(model,bs)
+         return(output)
+}
+slr(DBP, SBP, DR)
+```
+
+To better understand the coefficients the simple linear equation based on DBP predicting SBP would be:
+E(y) = $B_0 + B_1(x)$ = 14.536 + 1.406(x)
+
+which indicates that for every 1 unit increase in x (DBP) we would expect a 1.406 increase in y (SBP).
+
+
+**Multiple Linear Regression**
+
+Since there appears to be a relationship between Age, SBP, and DBP our regression would benefit from including multiple variables at once.  Our multiple linear regression model will attempt to predict SBP (Y) based on Age ($X_1$) and DBP ($X_2$). 
+
+```{r}
+mlr1 <- lm(SBP ~ Age + DBP, data=DR)
+summary(mlr1)
+```
+
+The multiple regression equation would predict SBP (y) using the coefficients of Age ($X_1$) and DBP ($X_2$).
+
+Our regression model would take the form of 
+
+$Y_i = B_0 + B_1X_{1i} + B_2X_{2i} + error$ 
+
+with an estimated equation of 
+
+$E(Y) = B_0 + B_1(x_1) + B_2(x_2) =  6.516 + .2624(x_1) + 1.352(x_2)$
+
+Our y-intercept ($B_0$) has a value of 6.516 which represents the SBP if $X_1$ and $X_2$ were zero, although this is impossible.  If we were to hold DBP ($X_2$) constant, then every one unit increase in age ($X_1$) would result in a .2624 increase in SBP (y).  If we were to hold age ($X_1$) constant, then every one unit increase in DBP ($X_2$) would result in a 1.352 increase in SBP (y). 
+
+
+As we can see from the following boxplot, males and females do not possess identical distributions for systolic blood pressure.
+
+```{r}
+ boxplot(SBP ~ Gender)
+```
+
+Our model may benefit from including this categorical variable.  Our regression model would take the form of 
+
+$Y_i = B_0 + B_1X_{1i} + B_2X_{2i} + B_3X_{3i} + error$ 
+
+```{r}
+mlr2 <- lm(SBP ~ factor(Gender) + Age + DBP, data=DR)
+summary(mlr2)
+```
+
+The multiple regression equation predicts SBP (y) using the coefficients of Gender ($X_1$), Age ($X_2$), and DBP ($X_3$).
+
+The estimated regression equation would be 
+
+$E(Y) = B_0 + B_1(x_1) + B_2(x_2) + B_3(x_3) =  6.741 - 1.560(x_1) + 0.277(x_2) + 1.347(X_3)$
+
+Our y-intercept ($B_0$) has a value of 6.741 which represents the SBP if $X_1$, $X_2$, and $X_3$ were zero, although this is impossible.  If we were to hold SBP ($X_2$) and DBP ($X_3$) constant, a male patient would represent a Gender ($X_1$) value of 1 and lead to a 1.560 decrease in SBP (Y).  If we were to hold Gender and DBP constant, a 1 unit increase in Age would lead to a .277 increase in SBP.  If we were to hold Gender and Age constant, a 1 unit increase in DBP would lead to a 1.347 increase in SBP. 
+
+
+**Complete Regression**
+
+Including all continous and categorical variables from our dataset our regression model is 
+
+$Y_i = B_1X_{1i} + B_2X_{2i} +  B_3X_{3i} + B_4X_{4i} +  B_5X_{5i} + B_6X_{6i} +  B_7X_{7i} + B_8X_{8i} + B_9X_{9i} + B_{10}X_{10i} + B_{11}X_{11i} + error$
+
+where $B_1 - B_8$ represent the Village from which the patient is from, $B_9$ represents whether the patient is male or female, $B_{10}$ is age, and $B_{11}$ is dystolic blood pressure. 
+
+```{r}
+mlrfull <- lm(SBP ~ factor(Village) + factor(Gender) + Age + DBP - 1, data=DR)
+summary(mlrfull)
+```
+
+The significance of our categorical predictor variables may be called into question but we were not asked to discuss this issue on this problem set.
+
+Our estimated regression equation is 
+
+$E(Y) = 8.53X_{1} + 9.48X_{2} +  1.65X_{3} + 2.15X_{4} +  9.11X_{5} + 2.85X_{6} +  3.37X_{7} + 5.15X_{8} - 1.26X_{9i} + 0.27X_{10} + 1.37X_{11}$
+
+A summary of our residuals is
+
+```{r}
+res <- residuals(mlrfull)
+boxplot(res)
+```
+
+The residuals appear to be normally distributed about zero with several outliers. Since the mean of our errors is zero, we determine that this is a sufficient model based on the concepts we have learned thus far. 
+
+
+**Global F-Test**
+
+The model with more parameters will always be able to fit the data at least as well as the model with fewer parameters. Thus typically our full model will give a better (i.e. lower error) fit to the data than a nested model. However, one often wants to determine whether the full model gives a significantly better fit to the data. One approach to this problem is to use an F test.
+
+We will use our model that only included continuous predictor variables (Age and DBP) as our nested model while our full model will include all available predictor variables (Village, Gender, Age, and DBP).  Our significance level will be set at alpha = .05
+
+```{r}
+anova(mlr1, mlrfull)
+```
+
+Our F-statistic is 2.0128 with a p-value of .044 which means that we may reject the null hypothesis at the .05 significance level.  Our full model is a significantly better fit to the data than our nested model. 
+
+
